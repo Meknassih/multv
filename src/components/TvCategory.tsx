@@ -1,3 +1,4 @@
+"use client";
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -8,7 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { ArrowRight } from "lucide-react";
-import { redirect } from "next/navigation";
+import { useRouter } from "next/navigation";
 
 export function TvCategory({
   name,
@@ -19,6 +20,7 @@ export function TvCategory({
   id: string;
   description?: string;
 }) {
+  const router = useRouter();
 
   return (
     <Card className="w-[350px]">
@@ -29,7 +31,7 @@ export function TvCategory({
       <CardFooter className="flex justify-between">
         <Button
           onClick={() => {
-            redirect(`/series/${id}`);
+            router.push(`/series/${id}`);
           }}
         >
           <ArrowRight />
