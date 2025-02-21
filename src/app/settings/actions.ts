@@ -12,7 +12,6 @@ import {
 import { RecordModel } from "pocketbase";
 
 export const getUserPlaylist = async (userId: string) => {
-  console.log("getUserPlaylist", userId);
   return pb.collection("playlists").getFirstListItem(`createdBy="${userId}"`);
 };
 

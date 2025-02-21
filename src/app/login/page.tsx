@@ -3,32 +3,53 @@
 import H1 from "@/components/ui/h1";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { login } from "./actions";
-import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
+import { useForm } from "react-hook-form"
+import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { z } from "zod"
+import { signIn } from "next-auth/react"
+import { FormProvider } from "react-hook-form";
+
+const formSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+})
+
+type FormData = z.infer<typeof formSchema>
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const { toast } = useToast();
   const router = useRouter();
+  
+  const methods = useForm<FormData>({
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+    resolver: zodResolver(formSchema),
+  });
 
-  const onLogin = async () => {
+  const onLogin = async (data: FormData) => {
     try {
-      const authData = await login(email, password);
-      if (authData.record) {
-        localStorage.setItem("user", JSON.stringify(authData.record));
+      const result = await signIn("credentials", {
+        email: data.email,
+        password: data.password,
+        redirect: false,
+      });
+
+      if (result?.error) {
+        throw new Error(result.error);
       }
-      if (authData.token) {
-        localStorage.setItem("token", authData.token);
-      }
+
       toast({
         title: "Login successful",
         description: "You are now logged in",
       });
+      
       router.push('/');
+      router.refresh();
     } catch (error) {
       toast({
         title: "Login failed",
@@ -41,15 +62,39 @@ export default function LoginPage() {
   return (
     <>
       <H1>Login</H1>
-      <div className="grid w-full max-w-sm items-center gap-1.5">
-        <Label htmlFor="email">Email</Label>
-        <Input type="email" id="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} />
-      </div>
-      <div className="grid w-full max-w-sm items-center gap-1.5">
-        <Label htmlFor="password">Password</Label>
-        <Input type="password" id="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
-      </div>
-      <Button onClick={onLogin}>Login</Button>
+      <FormProvider {...methods}>
+        <form onSubmit={methods.handleSubmit(onLogin)} className="space-y-4">
+          <FormField
+            control={methods.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email</FormLabel>
+                <FormControl>
+                  <Input type="email" placeholder="Email" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={methods.control}
+            name="password"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Password</FormLabel>
+                <FormControl>
+                  <Input type="password" placeholder="Password" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <Button type="submit" className="w-full">
+            Login
+          </Button>
+        </form>
+      </FormProvider>
     </>
   );
 }
