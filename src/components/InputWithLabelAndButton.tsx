@@ -14,7 +14,7 @@ export default function InputWithLabelAndButton({
 }: {
   id: string;
   type: string;
-  label: string;
+  label?: string;
   placeholder: string;
   buttonText: string;
   onClick: () => void;
@@ -23,7 +23,7 @@ export default function InputWithLabelAndButton({
 }) {
   return (
     <div className="grid w-full max-w-sm items-center gap-1.5">
-      <Label htmlFor={id}>{label}</Label>
+      {label && <Label htmlFor={id}>{label}</Label>}
       <div className="flex w-full max-w-sm items-center space-x-2">
         <Input type={type} id={id} placeholder={placeholder} value={value} onChange={onChange} />
         <Button onClick={onClick}>{buttonText}</Button>
