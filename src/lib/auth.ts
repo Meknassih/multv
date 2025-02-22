@@ -3,17 +3,18 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { pb } from "./pocketbase";
 import { DefaultSession } from "next-auth";
 
+export interface AuthUser {
+  id: string;
+  token: string;
+}
+
+export interface AuthSession {
+  user: AuthUser & DefaultSession["user"];
+}
+
 declare module "next-auth" {
-  interface Session {
-    user: {
-      id: string;
-      token: string;
-    } & DefaultSession["user"];
-  }
-  interface User {
-    id: string;
-    token: string;
-  }
+  interface Session extends AuthSession {}
+  interface User extends AuthUser {}
 }
 
 export const authOptions: NextAuthOptions = {
@@ -56,11 +57,14 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async session({ session, token }) {
-      if (token && session.user) {
-        session.user.id = token.id as string;
-        session.user.token = token.token as string;
-      }
-      return session;
+      return {
+        ...session,
+        user: {
+          ...session.user,
+          id: token.id as string,
+          token: token.token as string,
+        }
+      };
     },
     async jwt({ token, user }) {
       if (user) {

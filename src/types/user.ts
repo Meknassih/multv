@@ -10,14 +10,3 @@ export type User = {
   updated: string;
   verified: boolean;
 };
-
-export const getLocalUser = () => {
-  if (typeof window === "undefined") {
-    return null;
-  }
-  const user = window.localStorage.getItem("user");
-  if (!user) {
-    throw new Error("User not found");
-  }
-  return JSON.parse(user) as User;
-};

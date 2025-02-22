@@ -6,25 +6,19 @@ import H1 from "@/components/ui/h1";
 import { useEffect, useState } from "react";
 import InputWithLabelAndButton from "@/components/InputWithLabelAndButton";
 import H2 from "@/components/ui/h2";
-import { getUserPlaylist, savePlaylistUrl } from "./actions";
+import { getUserPlaylist, savePlaylistUrl } from "@/lib/db/playlists";
 import { useToast } from "@/hooks/use-toast";
-import { getLocalUser, User } from "@/types/user";
+import { useSession } from "next-auth/react";
+import { AuthUser } from "../../lib/auth";
 
 export default function SettingsPage() {
-  const [user, setUser] = useState(() => getLocalUser());
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [playlistUrl, setPlaylistUrl] = useState("");
   const { toast } = useToast();
-
-  useEffect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-    const user = window.localStorage.getItem("user");
-    if (!user) {
-      throw new Error("User not found");
-    }
-    setUser(JSON.parse(user) as User);
-  }, []);
+  const session = useSession();
+  if (session.status === "authenticated" && session.data?.user) {
+    setUser(session.data.user as AuthUser);
+  }
 
   useEffect(() => {
     if (!user) {
