@@ -5,7 +5,7 @@ import InputWithLabelAndButton from "@/components/InputWithLabelAndButton";
 import { TvCategory } from "@/components/TvCategory";
 import { GroupTitlesSrs } from "@/types/groupTitlesSrs";
 import { getSeriesGroups, searchSeriesGroups } from "./actions";
-import { Skeleton } from "../../components/ui/skeleton"
+import LoadingTvItems from "@/components/LoadingTvItems";
 
 export function SeriesClient({ playlistId }: { playlistId: string }) {
   const [search, setSearch] = useState("");
@@ -48,9 +48,7 @@ export function SeriesClient({ playlistId }: { playlistId: string }) {
       />
       <div className="flex flex-wrap gap-4">
         {isLoading ? (
-          Array(6).fill(0).map((_, i) => (
-            <Skeleton key={i} className="w-[350px] h-[140px] rounded-md" />
-          ))
+          <LoadingTvItems />
         ) : (
           seriesGroups.length > 0 ?
             seriesGroups.map((group) => (

@@ -15,9 +15,9 @@ export async function getPlaylistEntry(playlistEntryId: string) {
     return playlistEntry;
 }
 
-export async function getPlaylistEntriesByGroupTitle(playlistId: string, groupTitle: string) {
-    const playlistEntries = await pb.collection("playlistEntries").getList<PlaylistEntry>(1, 50, {
-        filter: `playlist = "${playlistId}" && groupTitle = "${groupTitle}"`
+export async function getPlaylistEntriesByGroupTitle(playlistId: string, groupTitle: string, page = 1, itemsPerPage = 50, filter: string = "") {
+    const playlistEntries = await pb.collection("playlistEntries").getList<PlaylistEntry>(page, itemsPerPage, {
+        filter: `playlist = "${playlistId}" && groupTitle = "${groupTitle}"${filter ? ` && ${filter}` : ""}`
     });
     return playlistEntries;
 }
