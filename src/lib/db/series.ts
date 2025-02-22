@@ -10,3 +10,8 @@ export async function getPlaylistSeriesGroups(playlistId: string, page = 1, item
     });
     return seriesGroups;
 }
+
+export async function getSeriesGroup(srsGroupId: string) {
+    const seriesGroup = await pb.collection("groupTitlesSrs").getOne<GroupTitlesSrs>(srsGroupId);
+    return seriesGroup;
+}
