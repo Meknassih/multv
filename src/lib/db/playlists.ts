@@ -6,20 +6,26 @@ import { RecordModel } from "pocketbase";
 import axios from "axios";
 import { createInterface } from "readline";
 import { Readable } from "stream";
-import { parsePlaylistEntry, PlaylistEntry, PlaylistEntryBuild } from "@/types/playlistEntry";
+import {
+  parsePlaylistEntry,
+  PlaylistEntry,
+  PlaylistEntryBuild,
+} from "@/types/playlistEntry";
 
 export async function getPlaylists() {
-    const playlists = await pb.collection("playlists").getList<Playlist>(1, 50);
-    return playlists;
+  const playlists = await pb.collection("playlists").getList<Playlist>(1, 50);
+  return playlists;
 }
 
 export async function getPlaylist(id: string) {
-    const playlist = await pb.collection("playlists").getOne<Playlist>(id);
-    return playlist;
+  const playlist = await pb.collection("playlists").getOne<Playlist>(id);
+  return playlist;
 }
 export async function getUserPlaylist(userId: string) {
-    const playlist = await pb.collection("playlists").getFirstListItem<Playlist>(`createdBy = "${userId}"`);
-    return playlist;
+  const playlist = await pb
+    .collection("playlists")
+    .getFirstListItem<Playlist>(`createdBy = "${userId}"`);
+  return playlist;
 }
 
 export const savePlaylistUrl = async (userId: string, playlistUrl: string) => {
@@ -52,6 +58,12 @@ export const savePlaylistUrl = async (userId: string, playlistUrl: string) => {
 
 export const syncPlaylist = async (id: string, url: string) => {
   try {
+    // Set playlist isSyncing to true
+    await pb.collection("playlists").update(id, { isSyncing: true });
+
+    // Wipe out all existing entries
+    await deletePlaylistEntries(id);
+
     // playlist m3u file can be very large (100mb+)
     const response = await axios({
       url,
@@ -64,29 +76,36 @@ export const syncPlaylist = async (id: string, url: string) => {
       crlfDelay: Infinity,
     });
 
-    // Set playlist isSyncing to true
-    await pb.collection("playlists").update(id, { isSyncing: true });
-
     let currentEntry: PlaylistEntryBuild | null = null;
+
+    let count = 0;
+    let batch = pb.createBatch();
+    const batchSize = 1000;
 
     for await (const line of rl) {
       if (line.startsWith("#EXTINF:")) {
         // Start of a new entry
         if (currentEntry) {
-          const parsedEntry = parsePlaylistEntry(currentEntry);
+          if (count > 0 && count % batchSize === 0) {
+            await batch.send();
+            logBatchSent("CREATE", count, batchSize);
+            batch = pb.createBatch();
+          }
+          let parsedEntry: Omit<PlaylistEntry, "playlist">;
           try {
-            console.log("Creating playlist entry: ", parsedEntry.title);
-            await pb.collection("playlistEntries").create<PlaylistEntry>(
-              {
-                ...parsedEntry,
-                playlist: id,
-              },
-              {
-                requestKey: null,
-              }
-            );
           } catch (error) {
             console.error(error);
+          }
+          try {
+            parsedEntry = parsePlaylistEntry(currentEntry);
+            batch.collection("playlistEntries").create({
+              ...parsedEntry,
+              playlist: id,
+            });
+            count++;
+          } catch (error) {
+            console.error(error);
+            continue;
           }
         }
         currentEntry = { extinf: line, path: "" };
@@ -106,6 +125,12 @@ export const syncPlaylist = async (id: string, url: string) => {
       } catch (error) {
         console.error(error);
       }
+      count++;
+    }
+
+    if (count % batchSize > 0) {
+      await batch.send();
+      logBatchSent("CREATE", count, batchSize);
     }
 
     // Set playlist isSyncing to false
@@ -115,4 +140,41 @@ export const syncPlaylist = async (id: string, url: string) => {
   } catch (error) {
     console.error("Error syncing playlist", error);
   }
+};
+
+export const deletePlaylistEntries = async (playlistId: string) => {
+  const batchSize = 1000;
+  const entries = await pb
+    .collection("playlistEntries")
+    .getFullList<PlaylistEntry>({
+      filter: `playlist = "${playlistId}"`,
+    });
+
+  console.debug(`Deleting ${entries.length} playlist entries`);
+
+  let batch = pb.createBatch();
+  let count = 0;
+  for (const entry of entries) {
+    if (entry.id) {
+      await batch.collection("playlistEntries").delete(entry.id);
+      count++;
+    }
+    if (count > 0 && count % batchSize === 0) {
+      await batch.send();
+      logBatchSent("DELETE", count, batchSize);
+      batch = pb.createBatch();
+    }
+  }
+  if (count > 0 && count % batchSize > 0) {
+    await batch.send();
+    logBatchSent("DELETE", count, batchSize);
+  }
+};
+
+const logBatchSent = (type: string, count: number, batchSize: number) => {
+  console.debug(
+    `Sending ${type} batch ${Math.ceil(
+      count / batchSize
+    )} of ${batchSize} entries`
+  );
 };

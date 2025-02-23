@@ -16,9 +16,12 @@ export default function SettingsPage() {
   const [playlistUrl, setPlaylistUrl] = useState("");
   const { toast } = useToast();
   const session = useSession();
-  if (session.status === "authenticated" && session.data?.user) {
-    setUser(session.data.user as AuthUser);
-  }
+
+  useEffect(() => {
+    if (session.status === "authenticated" && session.data?.user) {
+      setUser(session.data.user as AuthUser);
+    }
+  }, [session.status, session.data]);
 
   useEffect(() => {
     if (!user) {
@@ -66,7 +69,7 @@ export default function SettingsPage() {
             id="playlistUrl"
             type="text"
             label="Playlist URL"
-            placeholder="http://localhost:8090"
+            placeholder="http://example.com:80/get.php?username=myself&password=verysecret&type=m3u_plus&output=ts"
             buttonText="Save"
             onClick={onSavePlaylistUrl}
             value={playlistUrl}

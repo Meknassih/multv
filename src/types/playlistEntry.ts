@@ -1,60 +1,96 @@
 export interface PlaylistEntryBuild {
-    extinf: string;  // The EXTINF line
-    path: string;    // The media path/URL line
+  extinf: string; // The EXTINF line
+  path: string; // The media path/URL line
 }
 
 export interface ParsedPlaylistEntry {
-    duration: number;
-    title: string;
-    path: string;
-    tvgId?: string;
-    tvgName?: string;
-    tvgLogo?: string;
-    groupTitle?: string;
-    rawExtinf?: string;
-    rawPath?: string;
+  duration: number;
+  title: string;
+  path: string;
+  tvgId?: string;
+  tvgName?: string;
+  tvgLogo?: string;
+  groupTitle?: string;
+  rawExtinf?: string;
+  rawPath?: string;
 }
 
 export interface PlaylistEntry extends ParsedPlaylistEntry {
-    playlist: string;
-    id?: string;
+  playlist: string;
+  id?: string;
 }
 
-export function parsePlaylistEntry(entry: PlaylistEntryBuild): ParsedPlaylistEntry {
-    const parsed: ParsedPlaylistEntry = {
-        duration: -1,
-        title: '',
-        path: entry.path.trim()
-    };
+export function parsePlaylistEntry(
+  entry: PlaylistEntryBuild
+): ParsedPlaylistEntry {
+  const parsed: ParsedPlaylistEntry = {
+    duration: -1,
+    title: "",
+    path: entry.path.trim(),
+  };
 
-    // Parse the EXTINF line
-    const extinfLine = entry.extinf.trim();
-    
-    // Extract duration
-    const durationMatch = extinfLine.match(/#EXTINF:([-\d.]+)/);
-    if (durationMatch) {
-        parsed.duration = parseFloat(durationMatch[1]);
+  // Parse the EXTINF line
+  const extinfLine = entry.extinf.trim();
+
+  // Extract duration
+  const durationMatch = extinfLine.match(/#EXTINF:([-\d.]+)/);
+  if (durationMatch) {
+    parsed.duration = parseFloat(durationMatch[1]);
+  }
+
+  // Extract TVG attributes
+  const tvgIdMatch = extinfLine.match(/tvg-id="([^"]*)"/);
+  const tvgNameMatch = extinfLine.match(/tvg-name="([^"]*)"/);
+  const tvgLogoMatch = extinfLine.match(/tvg-logo="([^"]*)"/);
+  const groupTitleMatch = extinfLine.match(/group-title="([^"]*)"/);
+
+  if (tvgIdMatch) parsed.tvgId = tvgIdMatch[1];
+  if (tvgNameMatch) parsed.tvgName = tvgNameMatch[1];
+  if (tvgLogoMatch) parsed.tvgLogo = tvgLogoMatch[1];
+  if (groupTitleMatch) parsed.groupTitle = groupTitleMatch[1];
+
+  // Extract title (everything after the attributes)
+  const titleMatch = extinfLine.match(
+    /(?:tvg-id="[^"]*"|tvg-name="[^"]*"|tvg-logo="[^"]*"|group-title="[^"]*"),(.+)$/
+  );
+  if (titleMatch && titleMatch[1]) {
+    parsed.title = titleMatch[1].trim();
+  }
+
+  parsed.rawExtinf = entry.extinf;
+  parsed.rawPath = entry.path;
+
+  // Validation
+  if (parsed.tvgLogo) {
+    try {
+      const url = new URL(parsed.tvgLogo);
+      if (!["http:", "https:", "data:"].includes(url.protocol)) {
+        throw new Error(`Invalid TVG logo protocol: ${url.protocol}`);
+      }
+    } catch (_) {
+      const errorMessage = `Invalid TVG logo URL: ${parsed.tvgLogo}`;
+      console.debug(errorMessage.substring(0, 64) + "...");
+      parsed.tvgLogo = "/file.svg";
     }
-
-    // Extract TVG attributes
-    const tvgIdMatch = extinfLine.match(/tvg-id="([^"]*)"/);
-    const tvgNameMatch = extinfLine.match(/tvg-name="([^"]*)"/);
-    const tvgLogoMatch = extinfLine.match(/tvg-logo="([^"]*)"/);
-    const groupTitleMatch = extinfLine.match(/group-title="([^"]*)"/);
-
-    if (tvgIdMatch) parsed.tvgId = tvgIdMatch[1];
-    if (tvgNameMatch) parsed.tvgName = tvgNameMatch[1];
-    if (tvgLogoMatch) parsed.tvgLogo = tvgLogoMatch[1];
-    if (groupTitleMatch) parsed.groupTitle = groupTitleMatch[1];
-
-    // Extract title (everything after the last comma)
-    const titleMatch = extinfLine.match(/,[^,]*$/);
-    if (titleMatch) {
-        parsed.title = titleMatch[0].substring(1).trim();
+  }
+  if (parsed.path) {
+    if (
+      !parsed.path.match(
+        /^(?:https?:\/\/)(?:[\w-]+\.)+[\w-]+(?::\d+)?(?:\/[\w-\.\/]+)*(?:\.\w+)?$/
+      )
+    ) {
+      console.debug(`Invalid path: ${parsed.path}`);
+      parsed.path = "https://example.org/";
     }
+  }
+  if (parsed.rawExtinf && parsed.rawExtinf.length > 5000) {
+    // console.debug(`Raw EXTINF is too long: ${parsed.rawExtinf}`);
+    parsed.rawExtinf = parsed.rawExtinf.substring(0, 5000);
+  }
+  if (parsed.title && parsed.title.length > 5000) {
+    console.debug(`Title is too long: ${parsed.title}`);
+    parsed.title = parsed.title.substring(0, 5000);
+  }
 
-    parsed.rawExtinf = entry.extinf;
-    parsed.rawPath = entry.path;
-
-    return parsed;
+  return parsed;
 }
