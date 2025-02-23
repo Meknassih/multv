@@ -3,19 +3,19 @@
 import { useEffect, useState } from "react";
 import InputWithLabelAndButton from "@/components/InputWithLabelAndButton";
 import { TvCategory } from "@/components/TvCategory";
-import { Series } from "@/types/series";
-import { getSeries, searchSeries } from "./actions";
+import { GroupTitlesSrs } from "@/types/groupTitlesSrs";
+import { getSeriesGroups, searchSeriesGroups } from "./actions";
 import LoadingTvItems from "@/components/LoadingTvItems";
 
 export function SeriesClient({ playlistId }: { playlistId: string }) {
   const [search, setSearch] = useState("");
-  const [series, setSeries] = useState<Series[]>([]);
+  const [seriesGroups, setSeriesGroups] = useState<GroupTitlesSrs[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     setIsLoading(true);
-    getSeries(playlistId).then((series) => {
-      setSeries(series.items);
+    getSeriesGroups(playlistId).then((seriesGroups) => {
+      setSeriesGroups(seriesGroups.items);
       setIsLoading(false);
     });
   }, [playlistId]);
@@ -23,13 +23,13 @@ export function SeriesClient({ playlistId }: { playlistId: string }) {
   const handleSearch = () => {
     setIsLoading(true);
     if (search) {
-      searchSeries(playlistId, search).then((series) => {
-        setSeries(series.items);
+      searchSeriesGroups(playlistId, search).then((seriesGroups) => {
+        setSeriesGroups(seriesGroups.items);
         setIsLoading(false);
       });
     } else {
-      getSeries(playlistId).then((series) => {
-        setSeries(series.items);
+      getSeriesGroups(playlistId).then((seriesGroups) => {
+        setSeriesGroups(seriesGroups.items);
         setIsLoading(false);
       });
     }
@@ -50,9 +50,9 @@ export function SeriesClient({ playlistId }: { playlistId: string }) {
         {isLoading ? (
           <LoadingTvItems />
         ) : (
-          series.length > 0 ?
-            series.map((serie) => (
-              <TvCategory key={serie.id} name={serie.title} id={serie.id} />
+          seriesGroups.length > 0 ?
+            seriesGroups.map((group) => (
+              <TvCategory key={group.id} name={group.group} id={group.id} />
             ))
             : <div>No series categories found</div>
         )}
