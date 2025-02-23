@@ -26,16 +26,22 @@ export default function SeriesEntryPage() {
         <>
           <H1>{entry.title}</H1>
           <div>
-            <Image
-              src={entry.tvgLogo ?? ""}
-              alt={entry.title ?? ""}
-              width={350}
-              height={140}
-            />
+            {entry.tvgLogo && (
+              <Image
+                src={entry.tvgLogo}
+                alt={entry.title ?? ""}
+                width={350}
+                height={140}
+              />
+            )}
           </div>
-          <video width="800" height="600" controls>
-            <source src={entry.path ?? ""} />
-          </video>
+          {entry.path ? (
+            <video width="800" height="600" controls>
+              <source src={entry.path} />
+            </video>
+          ) : (
+            <div>No path found for the video stream</div>
+          )}
 
           <pre>{JSON.stringify(entry, null, 2)}</pre>
         </>

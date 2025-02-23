@@ -21,11 +21,24 @@ export default function InputWithLabelAndButton({
   value: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }) {
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      onClick();
+    }
+  };
+
   return (
     <div className="grid w-full max-w-sm items-center gap-1.5">
       {label && <Label htmlFor={id}>{label}</Label>}
       <div className="flex w-full max-w-sm items-center space-x-2">
-        <Input type={type} id={id} placeholder={placeholder} value={value} onChange={onChange} />
+        <Input 
+          type={type} 
+          id={id} 
+          placeholder={placeholder} 
+          value={value} 
+          onChange={onChange}
+          onKeyUp={handleKeyPress}
+        />
         <Button onClick={onClick}>{buttonText}</Button>
       </div>
     </div>
