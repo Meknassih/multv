@@ -13,6 +13,9 @@ export interface ParsedPlaylistEntry {
   groupTitle?: string;
   rawExtinf?: string;
   rawPath?: string;
+  seriesTitle?: string;
+  seriesSeason?: number;
+  seriesEpisode?: number;
 }
 
 export interface PlaylistEntry extends ParsedPlaylistEntry {
@@ -30,7 +33,7 @@ export function parsePlaylistEntry(
   };
 
   // Parse the EXTINF line
-  const extinfLine = entry.extinf.trim();
+  let extinfLine = entry.extinf.trim();
 
   // Extract duration
   const durationMatch = extinfLine.match(/#EXTINF:([-\d.]+)/);
@@ -44,14 +47,26 @@ export function parsePlaylistEntry(
   const tvgLogoMatch = extinfLine.match(/tvg-logo="([^"]*)"/);
   const groupTitleMatch = extinfLine.match(/group-title="([^"]*)"/);
 
-  if (tvgIdMatch) parsed.tvgId = tvgIdMatch[1];
-  if (tvgNameMatch) parsed.tvgName = tvgNameMatch[1];
-  if (tvgLogoMatch) parsed.tvgLogo = tvgLogoMatch[1];
-  if (groupTitleMatch) parsed.groupTitle = groupTitleMatch[1];
+  if (tvgIdMatch) {
+    parsed.tvgId = tvgIdMatch[1];
+    extinfLine = extinfLine.replace(tvgIdMatch[0], "");
+  }
+  if (tvgNameMatch) {
+    parsed.tvgName = tvgNameMatch[1];
+    extinfLine = extinfLine.replace(tvgNameMatch[0], "");
+  }
+  if (tvgLogoMatch) {
+    parsed.tvgLogo = tvgLogoMatch[1];
+    extinfLine = extinfLine.replace(tvgLogoMatch[0], "");
+  }
+  if (groupTitleMatch) {
+    parsed.groupTitle = groupTitleMatch[1];
+    extinfLine = extinfLine.replace(groupTitleMatch[0], "");
+  }
 
-  // Extract title (everything after the attributes)
+  // Extract title
   const titleMatch = extinfLine.match(
-    /(?:tvg-id="[^"]*"|tvg-name="[^"]*"|tvg-logo="[^"]*"|group-title="[^"]*"),(.+)$/
+    /,(.+)$/
   );
   if (titleMatch && titleMatch[1]) {
     parsed.title = titleMatch[1].trim();
@@ -93,4 +108,14 @@ export function parsePlaylistEntry(
   }
 
   return parsed;
+}
+
+export function parseSeriesEpisode(entryTitle: string) {
+    const seasonNumber = entryTitle?.match(/S(\d+)/)?.[1];
+    const episodeNumber = entryTitle?.match(/E(\d+)/)?.[1];
+    const title = entryTitle.replace("SRS -", "").replace(`S${seasonNumber}`, "").replace(`E${episodeNumber}`, "").trim();
+    if (!seasonNumber || !episodeNumber || !title) {
+        return;
+    }
+    return { seasonNumber, episodeNumber, title };
 }

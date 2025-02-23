@@ -1,6 +1,6 @@
 "use server";
 
-import { PlaylistEntry } from "@/types/playlistEntry"
+import { parseSeriesEpisode, PlaylistEntry } from "@/types/playlistEntry"
 import { pb } from "../pocketbase"
 
 export async function getPlaylistEntries(playlistId: string, page = 1, itemsPerPage = 50, filter: string = "") {
@@ -22,5 +22,15 @@ export async function getPlaylistEntriesByGroupTitle(playlistId: string, groupTi
     return playlistEntries;
 }
 
-
+export async function enrichSeriesEpisode(playlistEntry: PlaylistEntry) {
+    const result = parseSeriesEpisode(playlistEntry.title);
+    if (!result) return;
+    const { seasonNumber, episodeNumber, title } = result;
+    const seriesSeason = await pb.collection("playlistEntries").update<PlaylistEntry>(playlistEntry.id!, {
+        seriesTitle: title,
+        seriesSeason: seasonNumber,
+        seriesEpisode: episodeNumber
+    });
+    return seriesSeason;
+}
 

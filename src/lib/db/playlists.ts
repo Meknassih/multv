@@ -8,6 +8,7 @@ import { createInterface } from "readline";
 import { Readable } from "stream";
 import {
   parsePlaylistEntry,
+  parseSeriesEpisode,
   PlaylistEntry,
   PlaylistEntryBuild,
 } from "@/types/playlistEntry";
@@ -98,9 +99,13 @@ export const syncPlaylist = async (id: string, url: string) => {
           }
           try {
             parsedEntry = parsePlaylistEntry(currentEntry);
+            const seriesData = parseSeriesEpisode(parsedEntry.title);
             batch.collection("playlistEntries").create({
               ...parsedEntry,
               playlist: id,
+              seriesTitle: seriesData?.title,
+              seriesSeason: seriesData?.seasonNumber,
+              seriesEpisode: seriesData?.episodeNumber,
             });
             count++;
           } catch (error) {
@@ -168,6 +173,30 @@ export const deletePlaylistEntries = async (playlistId: string) => {
   if (count > 0 && count % batchSize > 0) {
     await batch.send();
     logBatchSent("DELETE", count, batchSize);
+  }
+};
+
+export const createSeriesSeasons = async (playlistId: string) => {
+  const playlist = await pb.collection("playlists").getOne<Playlist>(playlistId);
+  if (!playlist) {
+    throw new Error("Playlist not found");
+  }
+  const entries = await pb.collection("playlistEntries").getFullList<PlaylistEntry>({
+    filter: `playlist = "${playlistId}" && groupTitle ~ "SRS -%"`,
+  });
+  for (const entry of entries) {
+    const season = entry.groupTitle?.match(/S(\d+)/)?.[1];
+    const episode = entry.groupTitle?.match(/E(\d+)/)?.[1];
+    if (season && episode) {
+      console.debug(`Entry: ${entry.title}, Season: ${season}, Episode: ${episode}`);
+      const title = entry.title.replace("SRS -", "").replace(`S${season}`, "").replace(`E${episode}`, "").trim();
+      await pb.collection("seriesSeasons").create({
+        title,
+        playlist: playlist.id,
+        season,
+        episode,
+      });
+    }
   }
 };
 
